@@ -1,13 +1,13 @@
 import imageio
 import pytest
-from subsurface.io import read_unstruct
+from subsurface.reader.read_netcdf import read_unstruct
 import json
 import geopandas as gpd
 import pytest
 import numpy as np
 
 from subsurface import UnstructuredData, TriSurf, StructuredData
-from subsurface.io.profiles.profiles_core import create_mesh_from_trace
+from subsurface.reader.profiles.profiles_core import create_mesh_from_trace
 from subsurface.visualization import to_pyvista_mesh, pv_plot, \
     to_pyvista_mesh_and_texture
 
@@ -40,10 +40,10 @@ def test_profile_to_binary(data_path):
     v, e = create_mesh_from_trace(traces.loc[0, 'geometry'], traces.loc[0, 'zmax'],
                                   traces.loc[0, 'zmin'])
 
-    unstruct_temp = UnstructuredData(v, e)
+    unstruct_temp = UnstructuredData.from_array(v, e)
 
     cross = imageio.imread(data_path + '/profiles/Profil1_cropped.png')
-    struct = StructuredData(np.array(cross))
+    struct = StructuredData.from_numpy(np.array(cross))
     texture_binary, texture_header = struct.to_binary()
 
     origin = [traces.loc[0, 'geometry'].xy[0][0],
@@ -71,9 +71,7 @@ def test_profile_to_binary(data_path):
     _, uv = to_pyvista_mesh_and_texture(ts)
     import pandas as pd
 
-    unstruct = UnstructuredData(v, e,
-                                points_attributes=pd.DataFrame(uv,
-                                                               columns=['u', 'v']))
+    unstruct = UnstructuredData.from_array(v, e, points_attributes=pd.DataFrame(uv, columns=['u', 'v']))
     mesh_binary, mesh_header = unstruct.to_binary()
 
     with open('mesh_uv.json', 'w') as outfile:

@@ -6,7 +6,7 @@ Getting started
 # %%md
 # Authors: Miguel de la Varga and Alexander Juestel
 #
-# This example how to read into subsurface structures a bunch of different
+# This example shows how to read into subsurface structures a bunch of different
 # data such as:
 #
 # - well data -> from csv all in one single file
@@ -27,16 +27,18 @@ import pooch
 # %%
 # Read wells:
 # -----------
-# We can read well data - using welly as backend. First we need to have the
+# We can read well data - using welly as the backend. First we need to have the
 # data in the right format for digesting.
 
 # %%
 
 # Pulling data example
-import subsurface.interfaces.to_liquid_earth
-import subsurface.io.profiles.profiles_core
-import subsurface.io.topography.topo_core
-import subsurface.io.wells.wells_interface
+import subsurface.reader.profiles.profiles_core
+import subsurface.reader.read_netcdf
+import subsurface.reader.topography.topo_core
+import subsurface.reader.wells.wells_api
+import subsurface.reader.wells.wells_interface
+from subsurface.structs.base_structures.common_data_utils import replace_outliers
 
 model_file = pooch.retrieve(
     url="https://github.com/cgre-aachen/gempy_data/raw/master/"
@@ -51,7 +53,7 @@ shutil.unpack_archive(model_file, extract_dir=model_file[:-4])
 ori_wells = pd.read_csv(data_path + '/wells.csv')
 
 # Add top and base columns
-wells_fixed = ss.io.wells.add_tops_from_base_and_altitude_in_place(
+wells_fixed = ss.reader.wells.add_tops_from_base_and_altitude_in_place(
     ori_wells,
     'Index',
     'Z',
@@ -66,17 +68,12 @@ wells_fixed
 # Now we can read the csv files into subsurface.UnstructuredData
 
 # %%
-wells_unstructured_data = ss.io.read_wells_to_unstruct(
+wells_unstructured_data = subsurface.reader.wells.wells_api.read_wells_to_unstruct(
     collar_file=data_path + '/wells.csv',
-    read_collar_kwargs={
-        'usecols': ['Index', 'X', 'Y', 'Altitude'],
-        'header': 0
-    },
+    read_collar_kwargs={'usecols': ['Index', 'X', 'Y', 'Altitude'], 'header': 0},
     survey_file=data_path + '/wells.csv',
-    read_survey_kwargs={
-        'index_col': 'Index',
-        'usecols': ['Index', 'md']  # if incl and azi not given -> well vertical
-    },
+    # if incl and azi not given -> well vertical
+    read_survey_kwargs={'index_col': 'Index', 'usecols': ['Index', 'md']},
     lith_file=data_path + '/wells.csv',
     read_lith_kwargs={
         'index_col': 'Index',
@@ -88,7 +85,6 @@ wells_unstructured_data = ss.io.read_wells_to_unstruct(
     }
 
 )
-
 
 # %%
 wells_unstructured_data
@@ -121,7 +117,7 @@ ss.visualization.pv_plot(
 # %%
 
 # UnstructuredData
-borehole_location_struct = subsurface.io.wells.wells_interface.borehole_location_to_unstruct(
+borehole_location_struct = subsurface.reader.wells.wells_interface.borehole_location_to_unstruct(
     collar_file=data_path + '/wells.csv',
     read_collar_kwargs={
         'usecols': ['Index', 'X', 'Y', 'Altitude'],
@@ -144,12 +140,7 @@ borehole_loc_mesh = ss.visualization.to_pyvista_points(borehole_location_point_s
 borehole_loc_mesh
 
 # %%
-ss.visualization.pv_plot(
-    [borehole_loc_mesh],
-    image_2d=False,
-    ve=5
-)
-
+ss.visualization.pv_plot([borehole_loc_mesh], image_2d=False, ve=5)
 
 # %%md
 # Read Topography
@@ -158,11 +149,11 @@ ss.visualization.pv_plot(
 # %%
 
 # StructuredData
-topo_structured_data = subsurface.io.topography.topo_core.read_structured_topography(data_path + '/DEM50.tif')
+topo_structured_data = subsurface.reader.topography.topo_core.read_structured_topography(data_path + '/DEM50.tif')
 topo_structured_data
 # %%
 # Remove outliers
-topo_structured_data.replace_outliers('topography', 0.98)
+replace_outliers(topo_structured_data, 'topography', 0.98)
 
 # Element
 topo_element = ss.structs.StructuredGrid(topo_structured_data)
@@ -173,12 +164,7 @@ topo_mesh = ss.visualization.to_pyvista_grid(topo_element, 'topography',
                                              data_order='C')
 
 # %%
-ss.visualization.pv_plot(
-    [topo_mesh],
-    image_2d=False,
-    ve=5
-)
-
+ss.visualization.pv_plot([topo_mesh], image_2d=False, ve=5)
 
 # %%md
 # Read Profiles
@@ -186,13 +172,13 @@ ss.visualization.pv_plot(
 
 # %%
 
-profiles_traces = subsurface.io.profiles.profiles_core.lineset_from_trace(
+profiles_traces = subsurface.reader.profiles.profiles_core.lineset_from_trace(
     data_path + '/Profiles_cropped/Profile_PyVista.shp',
     idx=range(13)
 )
 
 # %%
-profiles_trisurf_list, profiles_mesh_list = subsurface.io.profiles.profiles_core.create_tri_surf_from_traces_texture(
+profiles_trisurf_list, profiles_mesh_list = subsurface.reader.profiles.profiles_core.create_tri_surf_from_traces_texture(
     data_path + '/Profiles_cropped/Profile_PyVista.shp',
     path_to_texture=[
         data_path + '/Profiles_cropped/profile001.png',
@@ -215,11 +201,7 @@ profiles_trisurf_list, profiles_mesh_list = subsurface.io.profiles.profiles_core
 )
 
 # %%
-ss.visualization.pv_plot(
-    profiles_mesh_list,
-    image_2d=False,
-    ve=5
-)
+ss.visualization.pv_plot(profiles_mesh_list, image_2d=False, ve=5)
 
 # %%md
 # GemPy Mesh
@@ -227,7 +209,7 @@ ss.visualization.pv_plot(
 
 # %%
 # UnstructuredData
-gempy_unstructured_data = ss.io.read_unstruct(data_path + '/meshes.nc')
+gempy_unstructured_data = subsurface.reader.read_netcdf.read_unstruct(data_path + '/meshes.nc')
 
 # Element
 trisurf_gempy = ss.TriSurf(gempy_unstructured_data)
@@ -242,7 +224,6 @@ ss.visualization.pv_plot(
     ve=5
 )
 
-
 # %%
 # sphinx_gallery_thumbnail_number = 6
 
@@ -252,20 +233,19 @@ ss.visualization.pv_plot(
 # ----------------
 
 # %%
-subsurface.interfaces.to_binary.base_structs_to_binary_file(data_path + '/gempy_base',
-                                                            gempy_unstructured_data)
-subsurface.interfaces.to_binary.base_structs_to_binary_file(data_path + '/wells',
-                                                            wells_unstructured_data)
-subsurface.interfaces.to_binary.base_structs_to_binary_file(data_path + '/topo',
-                                                            topo_structured_data)
-subsurface.interfaces.to_binary.base_structs_to_binary_file(data_path + '/collars',
-                                                            borehole_location_struct)
+subsurface.writer.to_binary.base_structs_to_binary_file(data_path + '/gempy_base',
+                                                        gempy_unstructured_data)
+subsurface.writer.to_binary.base_structs_to_binary_file(data_path + '/wells',
+                                                        wells_unstructured_data)
+subsurface.writer.to_binary.base_structs_to_binary_file(data_path + '/topo',
+                                                        topo_structured_data)
+subsurface.writer.to_binary.base_structs_to_binary_file(data_path + '/collars',
+                                                        borehole_location_struct)
 
 for e, tri_surf in enumerate(profiles_trisurf_list):
-    subsurface.interfaces.to_binary.base_structs_to_binary_file(data_path + f'/profile_{e}_mesh',
-                                                                tri_surf.mesh)
-    subsurface.interfaces.to_binary.base_structs_to_binary_file(
+    subsurface.writer.to_binary.base_structs_to_binary_file(data_path + f'/profile_{e}_mesh',
+                                                            tri_surf.mesh)
+    subsurface.writer.to_binary.base_structs_to_binary_file(
         data_path + f'/profile_{e}_texture_C',
         tri_surf.texture,
         order='C')
-

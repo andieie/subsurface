@@ -6,7 +6,7 @@ import pandas as pd
 import geopandas as gpd
 from subsurface import StructuredGrid, TriSurf
 from subsurface.geological_formats import segy_reader
-from subsurface.io.profiles.profiles_core import create_mesh_from_trace
+from subsurface.reader.profiles.profiles_core import create_mesh_from_trace
 from subsurface.structs.base_structures import StructuredData, UnstructuredData
 import matplotlib.pyplot as plt
 import numpy as np
@@ -90,8 +90,8 @@ def test_read_segy_to_struct_data_imageio(get_structured_data, get_images):
         b = a.delaunay_2d().faces
         cells = b.reshape(-1, 4)[:, 1:]
         print('cells', cells)
-        struct = StructuredData(np.array(imageio.imread(image)))
-        unstruct = UnstructuredData(vertex, cells)
+        struct = StructuredData.from_numpy(np.array(imageio.imread(image)))
+        unstruct = UnstructuredData.from_array(vertex, cells)
         ts = TriSurf(
             mesh=unstruct,
             texture=struct
@@ -109,9 +109,9 @@ def test_plot_segy_as_struct_data_with_coords_dict(get_structured_data, get_imag
         zmax = 0.0
         v, e = segy_reader.create_mesh_from_coords(coords, zmin, zmax)
 
-        struct = StructuredData(np.array(imageio.imread(image)))
+        struct = StructuredData.from_numpy(np.array(imageio.imread(image)))
         print(struct) # normalize to number of samples
-        unstruct = UnstructuredData(v, e)
+        unstruct = UnstructuredData.from_array(v, e)
 
         origin = [float(coords['x'][0]), float(coords['y'][0]), zmin]
         point_u = [float(coords['x'][-1]), float(coords['y'][-1]), zmin]

@@ -1,47 +1,45 @@
 import pytest
 from subsurface import TriSurf, StructuredGrid
-from subsurface.io import read_unstruct, read_struct, read_structured_topography
+from subsurface.reader import read_structured_topography
+from subsurface.reader.read_netcdf import read_unstruct, read_struct
 
 from subsurface.structs.base_structures import UnstructuredData, StructuredData
 import numpy as np
 import pandas as pd
 import xarray as xr
+
+from subsurface.structs.base_structures.common_data_utils import replace_outliers
 from subsurface.visualization import to_pyvista_mesh, pv_plot, to_pyvista_grid
 
 
 def test_unstructured_data():
     # Normal constructor
-    foo = UnstructuredData(np.ones((5, 3)), np.ones((4, 3)),
-                           pd.DataFrame({'foo': np.arange(4)}))
+    foo = UnstructuredData.from_array(np.ones((5, 3)), np.ones((4, 3)),
+                                      pd.DataFrame({'foo': np.arange(4)}))
     print(foo)
 
     # No attributes
-    foo = UnstructuredData(np.ones((5, 3)), np.ones((4, 3)))
+    foo = UnstructuredData.from_array(np.ones((5, 3)), np.ones((4, 3)))
     print(foo)
 
     # Failed validation
     with pytest.raises(ValueError):
-        foo = UnstructuredData(np.ones((5, 3)), np.ones((4, 3)),
-                               pd.DataFrame({'foo': np.arange(1)}))
+        foo = UnstructuredData.from_array(np.ones((5, 3)), np.ones((4, 3)),
+                                          pd.DataFrame({'foo': np.arange(1)}))
         print(foo)
 
 
 def test_unstructured_data_no_cells():
-    foo = UnstructuredData(np.ones((5, 3)))
+    foo = UnstructuredData.from_array(np.ones((5, 3)), cells="points")
     print(foo)
 
 
 def test_unstructured_data_no_cells_no_attributes():
-    attributes = {
-        'notAttributeName': xr.DataArray(pd.DataFrame({'foo': np.arange(4)}))}
+    attributes = {'notAttributeName': xr.DataArray(pd.DataFrame({'foo': np.arange(4)}))}
 
     with pytest.raises(KeyError):
-        foo = UnstructuredData(
-            vertex=np.ones((5, 3)),
-            cells=np.ones((4, 3)),
-            attributes=attributes
-
-        )
+        foo = UnstructuredData.from_array(vertex=np.ones((5, 3)), cells=np.ones((4, 3)),
+                                          attributes=attributes)
 
     attributes2 = {
         'notAttributeName': xr.DataArray(
@@ -49,11 +47,8 @@ def test_unstructured_data_no_cells_no_attributes():
             dims=['cell', 'attribute']
         )}
 
-    foo = UnstructuredData(
-        vertex=np.ones((5, 3)),
-        cells=np.ones((4, 3)),
-        attributes=attributes2
-    )
+    foo = UnstructuredData.from_array(vertex=np.ones((5, 3)), cells=np.ones((4, 3)),
+                                                attributes=attributes2)
 
     print(foo)
 
@@ -74,11 +69,11 @@ def test_structured_data(struc_data):
     # StructuredData from DataArray
     b0 = xr.DataArray(xx, coords={'x': x_coord, 'y': y_coord, 'z': z_coord},
                       dims=['x', 'y', 'z'])
-    b = StructuredData(b0)
+    b = StructuredData.from_data_array(b0)
     print(b)
 
     # StructuredData from np.array
-    c = StructuredData(xx)
+    c = StructuredData.from_numpy(xx)
     print(c)
 
 
@@ -144,6 +139,6 @@ def test_read_struct(data_path):
 def test_remove_outliers(data_path):
     topo_path = data_path + '/topo/dtm_rp.tif'
     struct = read_structured_topography(topo_path)
-    struct.replace_outliers('topography', 0.99)
+    replace_outliers(struct, 'topography', 0.99)
     print(struct.data['topography'])
     print(struct.data['topography'].min())

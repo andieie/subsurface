@@ -4,7 +4,7 @@ from typing import Union
 import pandas as pd
 
 from subsurface.structs import UnstructuredData
-from subsurface.io.wells import read_collar
+from subsurface.reader.wells import read_collar
 
 
 def borehole_location_to_unstruct(
@@ -25,12 +25,10 @@ def borehole_location_to_unstruct(
         number_of_segments = collars.index.value_counts(sort=False).values
         collars_attributes['number_segments'] = number_of_segments
 
-    ud = UnstructuredData(
+    ud = UnstructuredData.from_array(
         vertex=collars_single_well[['x', 'y', 'altitude']].values.astype('float32'),
-        attributes=collars_attributes.astype('float32'),
-        xarray_attributes={
-            "wells_names": wells_names.values.tolist()
-        }
-    )  # TODO: This should be int16!
+        cells="points",
+        cells_attributes=collars_attributes.astype('float32'),
+        xarray_attributes={"wells_names": wells_names.values.tolist()})  # TODO: This should be int16!
 
     return ud
