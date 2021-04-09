@@ -1,7 +1,7 @@
 import pytest
 from subsurface import TriSurf, StructuredGrid
-from subsurface.reader import read_structured_topography
 from subsurface.reader.read_netcdf import read_unstruct, read_struct
+from subsurface.reader.topography.topo_core import read_structured_topography
 
 from subsurface.structs.base_structures import UnstructuredData, StructuredData
 import numpy as np
@@ -44,7 +44,7 @@ def test_unstructured_data_no_cells_no_attributes():
     attributes2 = {
         'notAttributeName': xr.DataArray(
             pd.DataFrame({'foo': np.arange(4)}),
-            dims=['cell', 'attribute']
+            dims=['cell', 'cell_attr']
         )}
 
     foo = UnstructuredData.from_array(vertex=np.ones((5, 3)), cells=np.ones((4, 3)),
